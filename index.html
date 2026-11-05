@@ -17,7 +17,7 @@
 <style>
 :root{
   --bg:#000; --card:#121110; --raise:#1b1a18; --line:#2c2a28;
-  --ink:#fff; --muted:#8f8b86; --red:#ff0040; --green:#3dbe5a;
+  --ink:#fff; --muted:#8f8b86; --red:#ff0040;
   --display:"Boldonse",Impact,"Arial Black",sans-serif;
   --body:"Geist",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
@@ -41,7 +41,7 @@ header img{height:34px;width:auto;display:block}
 .card{position:relative;background:var(--card);border-radius:28px;padding:18px 16px 66px}
 .face{transition:transform .2s ease-in,opacity .2s;transform-origin:center}
 .face.out{transform:rotateY(90deg);opacity:0}
-.face.in{animation:flipin .22s ease-out}
+.face.in{transition:none;animation:flipin .22s ease-out}
 @keyframes flipin{from{transform:rotateY(-90deg);opacity:0}to{transform:none;opacity:1}}
 
 .pill{display:flex;align-items:center;gap:12px;width:max-content;margin:0 auto 16px;background:#000;border-radius:999px;padding:9px 18px}
@@ -60,19 +60,18 @@ h2{font-family:var(--display);font-weight:400;font-size:1.3rem;line-height:1.35;
 .empty p{color:var(--muted);line-height:1.5;margin:0 auto 20px;max-width:32ch}
 .card.done .face > :not(.empty){display:none}
 .card.done .empty{display:block}
-.card.done .actions{display:none}
 .card.done{padding-bottom:28px}
 .card.done + * {}
 
 .actions{position:absolute;left:0;right:0;bottom:-44px;display:flex;justify-content:center;gap:16px;padding:0 12px}
 .act{width:min(46%,168px);height:96px;border-radius:44px;background:#000;border:3px solid;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-  font-weight:800;font-size:1.25rem;letter-spacing:-.03em;text-transform:uppercase;transition:transform .12s}
-.act:active{transform:scale(.96)}
+  font-weight:800;font-size:1.05rem;line-height:1.1;letter-spacing:-.02em;text-transform:uppercase;text-align:center;transition:transform .12s,opacity .15s}
+.act:active:not(:disabled){transform:scale(.96)}
+.act:disabled{opacity:.3;cursor:not-allowed;box-shadow:none}
 .act svg{width:34px;height:34px}
-.act.made{border-color:var(--green);color:var(--ink);box-shadow:0 18px 44px -6px rgba(61,190,90,.55)}
-.act.made svg{color:var(--green)}
-.act.miss{border-color:var(--red);box-shadow:0 18px 44px -6px rgba(255,0,64,.55)}
-.horse{width:36px;height:29px;background:url(horseplaylogo.png) -95px -5px/195px auto no-repeat}
+.act.prev{border-color:var(--line);color:var(--ink)}
+.act.next{border-color:var(--red);box-shadow:0 18px 44px -6px rgba(255,0,64,.55)}
+.act.next svg{color:var(--red)}
 
 footer{margin-top:auto;display:flex;justify-content:center;padding-top:22px}
 .share{display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:500;font-size:.95rem;padding:12px 18px;border-radius:999px;border:1px solid var(--line)}
@@ -139,8 +138,8 @@ footer{margin-top:auto;display:flex;justify-content:center;padding-top:22px}
       </div>
 
       <div class="actions">
-        <button class="act made" id="made"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2.5c.6 3.6 5.5 5.6 5.5 10.6a5.5 5.5 0 0 1-11 0c0-2.2 1-3.8 2.4-5 .2 1.6.9 2.5 2 2.9C10.4 8.4 10.7 5.2 12 2.5z"/></svg>Made it!</button>
-        <button class="act miss" id="miss"><span class="horse" aria-hidden="true"></span>Missed</button>
+        <button class="act prev" id="prev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Previous move</button>
+        <button class="act next" id="next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Next move</button>
       </div>
     </section>
   </div>
@@ -176,7 +175,7 @@ footer{margin-top:auto;display:flex;justify-content:center;padding-top:22px}
 
   const BALL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 2.5v19M2.5 12h19M5.2 5.2c3.5 3.5 3.5 9.1 0 13.6M18.8 5.2c-3.5 3.5-3.5 9.1 0 13.6"/></svg>';
 
-  let all = [], deck = [], idx = 0, tally = { made: 0, missed: 0 };
+  let all = [], deck = [], idx = 0;
   let win = { start: 0, end: null }, cur = null;
   let filt = loadFilters(), draft = null;
 
@@ -214,7 +213,7 @@ footer{margin-top:auto;display:flex;justify-content:center;padding-top:22px}
   /* ---------- deck ---------- */
   function buildDeck() {
     deck = shuffle(all.filter(m => matches(m, filt)));
-    idx = 0; tally = { made: 0, missed: 0 };
+    idx = 0;
     $('#badge').hidden = isDefault();
     show();
   }
@@ -223,7 +222,7 @@ footer{margin-top:auto;display:flex;justify-content:center;padding-top:22px}
     if (!deck.length) return endPanel('No moves match these filters', 'Turn on more difficulties or include dunks to see moves.', 'Reset filters', () => {
       filt = { tiers: ['easy', 'medium', 'hard'], dunk: true }; saveFilters(); buildDeck();
     });
-    if (idx >= deck.length) return endPanel('Deck complete', `${tally.made} made, ${tally.missed} missed. Ready for another round?`, 'Shuffle and restart', buildDeck);
+    if (idx >= deck.length) return endPanel('Deck complete', 'You’ve seen every move. Ready for another round?', 'Shuffle and restart', buildDeck);
     card.classList.remove('done');
     const m = deck[idx];
     $('#tier').textContent = TIERS[m.tier];
@@ -231,6 +230,7 @@ footer{margin-top:auto;display:flex;justify-content:center;padding-top:22px}
     $('#name').textContent = m.name;
     $('#desc').textContent = m.description;
     $('#counter').textContent = `${idx + 1} / ${deck.length}`;
+    updateNav();
     loadClip(m);
   }
   function endPanel(title, text, label, fn) {
@@ -238,18 +238,42 @@ footer{margin-top:auto;display:flex;justify-content:center;padding-top:22px}
     $('#eTitle').textContent = title; $('#eText').textContent = text; $('#eBtn').textContent = label;
     $('#eBtn').onclick = fn; $('#counter').textContent = '';
     cur = null; $('#clip').src = 'about:blank';
+    updateNav();
   }
+  // Previous is disabled on the first move; Next is disabled once the deck is finished.
+  function updateNav() {
+    $('#prev').disabled = !deck.length || idx <= 0;
+    $('#next').disabled = !deck.length || idx >= deck.length;
+  }
+let busy = false;
+  // Resolves once the new clip has loaded (or after 1s), so the card never shows the old video.
+  function clipReady() {
+    return new Promise(res => {
+      if ($('#card').classList.contains('done')) return res();
+      const f = $('#clip');
+      const done = () => { clearTimeout(t); f.removeEventListener('load', done); res(); };
+      const t = setTimeout(done, 1000);
+      f.addEventListener('load', done);
+    });
+  }
+  // Flip away -> stay hidden while the content and clip change -> flip in with the new move.
   function go(n) {
     const next = idx + n;
-    if (next < 0 || next > deck.length || !deck.length || idx >= deck.length && n > 0) return;
+    if (busy || next < 0 || next > deck.length || !deck.length || idx >= deck.length && n > 0) return;
     const face = $('#face');
-    const swap = () => { idx = next; show(); };
-    if (reduce) return swap();
+    if (reduce) { idx = next; show(); return; }
+    busy = true;
     face.classList.add('out');
-    setTimeout(() => { swap(); face.classList.remove('out'); face.classList.add('in'); setTimeout(() => face.classList.remove('in'), 240); }, 200);
+    setTimeout(() => {
+      idx = next; show();
+      clipReady().then(() => {
+        face.classList.add('in'); face.classList.remove('out');
+        setTimeout(() => { face.classList.remove('in'); busy = false; }, 240);
+      });
+    }, 220);
   }
-  $('#made').onclick = () => { tally.made++; go(1); };
-  $('#miss').onclick = () => { tally.missed++; go(1); };
+  $('#next').onclick = () => go(1);
+  $('#prev').onclick = () => go(-1);
   document.addEventListener('keydown', e => {
     if ($('#sheet').classList.contains('open')) return;
     if (e.key === 'ArrowRight') go(1); else if (e.key === 'ArrowLeft') go(-1);
